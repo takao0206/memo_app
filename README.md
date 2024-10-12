@@ -9,21 +9,25 @@ Sinatraを使ったシンプルなメモ管理アプリです。
 
 ## セットアップ
 1. このリポジトリをクローンします。
-```
-git clone https://github.com/takao0206/memo_app.git
-```
+  ```bash
+  git clone https://github.com/takao0206/memo_app.git
+  ```
+  もし開発用のブランチ (develop) をクローンしたい場合は、以下を実行します。
+  ```bash
+  git clone -b develop https://github.com/takao0206/memo_app.git
+  ```
 2. クローンしたディレクトリに移動します。
-```
-cd memo_app
-```
+  ```bash
+  cd memo_app
+  ```
 3. 必要な gem をインストールします。
-```
-bundle install
-```
+  ```bash
+  bundle install
+  ```
 4. アプリケーションを起動します。
-```
-bundle exec ruby memo_app.rb
-```
+  ```bash
+  bundle exec ruby memo_app.rb
+  ```
 5. ブラウザで `http://localhost:4567` を開き、アプリを確認します。
 
 ## 機能
