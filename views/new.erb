@@ -1,0 +1,19 @@
+<form id="memo-form" action="/memos" method="POST" class="memo-form">
+
+  <div id="error-message" style="color: red; display: none;"></div>
+
+  <div class="form-group">
+    <label for="title">タイトル：</label>
+    <input type="text" id="title" name="title" class="form-control" value="<%= h(session[:title]) %>">
+  </div>
+
+  <div class="form-group">
+    <label for="content">内容：</label>
+    <textarea id="content" name="content" class="form-control" rows="5"><%= h(session[:content]) %></textarea>
+  </div>
+
+  <div class="button-group">
+    <input type="submit" class="btn btn-primary w-100" value="保存">
+    <a href="/" class="btn btn-secondary w-100 mt-2">キャンセル</a>
+  </div>
+</form>
