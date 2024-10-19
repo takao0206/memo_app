@@ -29,8 +29,8 @@ end
 get '/' do
   save_memos([]) unless File.exist?(MEMOS_PATH)
 
-  memos = load_memos
-  erb :index, locals: { memos: }
+  @memos = load_memos
+  erb :index
 end
 
 get '/memos/new' do
@@ -54,10 +54,10 @@ end
 
 get '/memos/:id' do
   memos = load_memos
-  memo = find_memo(memos, params[:id])
+  @memo = find_memo(memos, params[:id])
 
-  if memo
-    erb :memo, locals: { memo: }
+  if @memo
+    erb :memo
   else
     status 404
     erb :not_found
@@ -66,9 +66,9 @@ end
 
 get '/memos/:id/edit' do
   memos = load_memos
-  memo = find_memo(memos, params[:id])
+  @memo = find_memo(memos, params[:id])
 
-  erb :edit, locals: { memo: }
+  erb :edit
 end
 
 patch '/memos/:id' do
