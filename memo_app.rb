@@ -75,8 +75,10 @@ patch '/memos/:id' do
   memos = load_memos
 
   memo = memos.find { |m| m['id'] == id }
-  memo['title'] = new_title if memo
-  memo['content'] = new_content if memo
+  if memo
+    memo['title'] = new_title
+    memo['content'] = new_content
+  end
 
   save_memos(memos)
 
