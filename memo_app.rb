@@ -12,14 +12,20 @@ helpers do
   end
 end
 
-get '/' do
-  unless File.exist?(MEMOS_PATH)
-    File.open(MEMOS_PATH, 'w') do |file|
-      file.write([].to_json)
-    end
-  end
+def load_memos
+  JSON.parse(File.read(MEMOS_PATH))
+end
 
-  memos = JSON.parse(File.read(MEMOS_PATH))
+def save_memos(memos)
+  File.open(MEMOS_PATH, 'w') do |file|
+    file.write(JSON.pretty_generate(memos))
+  end
+end
+
+get '/' do
+  save_memos([]) unless File.exist?(MEMOS_PATH)
+
+  memos = load_memos
   erb :index, locals: { memos: }
 end
 
@@ -34,18 +40,16 @@ post '/memos' do
 
   memo = { id:, title:, content: }
 
-  memos = JSON.parse(File.read(MEMOS_PATH))
+  memos = load_memos
   memos << memo
 
-  File.open(MEMOS_PATH, 'w') do |file|
-    file.write(JSON.pretty_generate(memos))
-  end
+  save_memos(memos)
 
   redirect '/'
 end
 
 get '/memos/:id' do
-  memos = JSON.parse(File.read(MEMOS_PATH))
+  memos = load_memos
   memo = memos.find { |m| m['id'] == params[:id] }
 
   if memo
@@ -57,7 +61,7 @@ get '/memos/:id' do
 end
 
 get '/memos/:id/edit' do
-  memos = JSON.parse(File.read(MEMOS_PATH))
+  memos = load_memos
   memo = memos.find { |m| m['id'] == params[:id] }
 
   erb :edit, locals: { memo: }
@@ -68,28 +72,24 @@ patch '/memos/:id' do
   new_title = params[:title]
   new_content = params[:content]
 
-  memos = JSON.parse(File.read(MEMOS_PATH))
+  memos = load_memos
 
   memo = memos.find { |m| m['id'] == id }
   memo['title'] = new_title if memo
   memo['content'] = new_content if memo
 
-  File.open(MEMOS_PATH, 'w') do |file|
-    file.write(JSON.pretty_generate(memos))
-  end
+  save_memos(memos)
 
   redirect "/memos/#{id}"
 end
 
 delete '/memos/:id' do
   id = params[:id]
-  memos = JSON.parse(File.read(MEMOS_PATH))
+  memos = load_memos
 
   memos.reject! { |m| m['id'] == id }
 
-  File.open(MEMOS_PATH, 'w') do |file|
-    file.write(JSON.pretty_generate(memos))
-  end
+  save_memos(memos)
 
   redirect '/'
 end
