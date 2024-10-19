@@ -22,6 +22,10 @@ def save_memos(memos)
   end
 end
 
+def find_memo(memos, id)
+  memos.find { |memo| memo['id'] == id }
+end
+
 get '/' do
   save_memos([]) unless File.exist?(MEMOS_PATH)
 
@@ -50,7 +54,7 @@ end
 
 get '/memos/:id' do
   memos = load_memos
-  memo = memos.find { |m| m['id'] == params[:id] }
+  memo = find_memo(memos, params[:id])
 
   if memo
     erb :memo, locals: { memo: }
@@ -62,7 +66,7 @@ end
 
 get '/memos/:id/edit' do
   memos = load_memos
-  memo = memos.find { |m| m['id'] == params[:id] }
+  memo = find_memo(memos, params[:id])
 
   erb :edit, locals: { memo: }
 end
@@ -74,7 +78,7 @@ patch '/memos/:id' do
 
   memos = load_memos
 
-  memo = memos.find { |m| m['id'] == id }
+  memo = find_memo(memos, id)
   if memo
     memo['title'] = new_title
     memo['content'] = new_content
