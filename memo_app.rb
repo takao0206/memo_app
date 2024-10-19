@@ -34,11 +34,11 @@ get '/memos/new' do
 end
 
 post '/memos' do
-  id = SecureRandom.uuid
-  title = params[:title]
-  content = params[:content]
-
-  memo = { id:, title:, content: }
+  memo = {
+    id: SecureRandom.uuid,
+    title: params[:title],
+    content: params[:content]
+  }
 
   memos = load_memos
   memos << memo
@@ -84,10 +84,9 @@ patch '/memos/:id' do
 end
 
 delete '/memos/:id' do
-  id = params[:id]
   memos = load_memos
 
-  memos.reject! { |m| m['id'] == id }
+  memos.reject! { |m| m['id'] == params[:id] }
 
   save_memos(memos)
 
