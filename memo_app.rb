@@ -18,7 +18,7 @@ end
 
 def save_memos(memos)
   File.open(MEMOS_PATH, 'w') do |file|
-    file.write(JSON.pretty_generate(memos))
+    file.write(JSON.generate(memos))
   end
 end
 
