@@ -3,13 +3,6 @@ function confirmDelete() {
   return confirm
 }
 
-window.onload = function () {
-  const inputElements = document.getElementById('title');
-  if (inputElements) {
-    inputElements.focus();
-  }
-};
-
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("memo-form");
   if (!form) {
