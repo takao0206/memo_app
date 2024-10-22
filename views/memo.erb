@@ -17,7 +17,7 @@
 
   <form action="/memos/<%= h(@memo['id']) %>" method="POST" class="flex-fill mx-1">
     <input type="hidden" name="_method" value="delete">
-    <input type="submit" class="btn btn-danger w-100" value="削除" onclick="return confirmDelete();">
+    <input type="submit" class="btn btn-danger w-100" value="削除" onclick="return confirm('削除を実行しますか？');">
   </form>
 </div>
 

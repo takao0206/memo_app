@@ -68,7 +68,12 @@ get '/memos/:id/edit' do
   memos = load_memos
   @memo = find_memo(memos, params[:id])
 
-  erb :edit
+  if @memo
+    erb :edit
+  else
+    status 404
+    erb :not_found
+  end
 end
 
 patch '/memos/:id' do
@@ -100,6 +105,4 @@ delete '/memos/:id' do
 end
 
 not_found do
-  status 404
-  erb :not_found
 end
