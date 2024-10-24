@@ -6,35 +6,9 @@ require 'securerandom'
 require 'pg'
 require 'dotenv/load'
 
-MEMOS_PATH = File.join(settings.public_folder, 'memos.json')
 TABLE_NAME = 'memos'
-
-def connect_db
-  PG.connect(
-    dbname: ENV['DATABASE_NAME'],
-    user: ENV['DATABASE_USER'],
-    password: ENV['DATABASE_PASSWORD']
-  )
-end
-
-def create_table_if_not_exists
-  connection = connect_db
-  table_exists = connection.exec(
-    "SELECT EXISTS (
-      SELECT FROM information_schema.tables WHERE table_name = '#{TABLE_NAME}'
-    );"
-  ).first['exists'] == 't'
-
-  return if table_exists
-
-  connection.exec(
-    "CREATE TABLE #{TABLE_NAME} (
-      id SERIAL PRIMARY KEY,
-      title VARCHAR(100) NOT NULL,
-      content TEXT NOT NULL
-    );"
-  )
-end
+COLUMN_TITLE = 'title'
+COLUMN_CONTENT = 'content'
 
 before do
   create_table_if_not_exists
@@ -46,13 +20,71 @@ helpers do
   end
 end
 
-def load_memos
-  JSON.parse(File.read(MEMOS_PATH))
+def connect_db
+  PG.connect(
+    dbname: ENV['DATABASE_NAME'],
+    user: ENV['DATABASE_USER'],
+    password: ENV['DATABASE_PASSWORD']
+  )
 end
 
-def save_memos(memos)
-  File.open(MEMOS_PATH, 'w') do |file|
-    file.write(JSON.generate(memos))
+def with_connection
+  connection = connect_db
+  yield(connection)
+ensure
+  connection&.close
+end
+
+def create_table_if_not_exists
+  with_connection do |connection|
+    table_exists = connection.exec(
+      "SELECT EXISTS (
+        SELECT FROM information_schema.tables WHERE table_name = '#{TABLE_NAME}'
+      );"
+    ).first['exists'] == 't'
+
+    unless table_exists
+      connection.exec(
+        "CREATE TABLE #{TABLE_NAME} (
+          id SERIAL PRIMARY KEY,
+          #{COLUMN_TITLE} VARCHAR(100) NOT NULL,
+          #{COLUMN_CONTENT} TEXT NOT NULL
+        );"
+      )
+    end
+  end
+end
+
+def load_memos
+  with_connection do |connection|
+    @memos = connection.exec("SELECT * FROM #{TABLE_NAME} ORDER BY id ASC;").map do |memo|
+      memo['title'].force_encoding('UTF-8')
+      memo['content'].force_encoding('UTF-8')
+      memo
+    end
+  end
+  @memos
+end
+
+def save_memo(title, content)
+  with_connection do |connection|
+    connection.exec_params(
+      "INSERT INTO #{TABLE_NAME} (#{COLUMN_TITLE}, #{COLUMN_CONTENT}) VALUES ($1, $2)", [title, content]
+    )
+  end
+end
+
+def update_memo(id, title, content)
+  with_connection do |connection|
+    connection.exec_params(
+      "UPDATE #{TABLE_NAME} SET #{COLUMN_TITLE} = $1, #{COLUMN_CONTENT} = $2 WHERE id = $3", [title, content, id]
+    )
+  end
+end
+
+def delete_memo(id)
+  with_connection do |connection|
+    connection.exec_params("DELETE FROM #{TABLE_NAME} WHERE id = $1", [id])
   end
 end
 
@@ -61,40 +93,23 @@ def find_memo(memos, id)
 end
 
 get '/' do
-  create_table_if_not_exists
-  "Check your database! The table '#{TABLE_NAME}' has been created if it did not exist."
+  load_memos
+
+  erb :index
 end
-
-# TODO: データベース接続の機能が完成したので、次は保存先を JSON -> DB に変更する。
-# get '/' do
-#   save_memos([]) unless File.exist?(MEMOS_PATH)
-
-#   @memos = load_memos
-#   erb :index
-# end
 
 get '/memos/new' do
   erb :new
 end
 
 post '/memos' do
-  memo = {
-    id: SecureRandom.uuid,
-    title: params[:title],
-    content: params[:content]
-  }
-
-  memos = load_memos
-  memos << memo
-
-  save_memos(memos)
+  save_memo(params[:title], params[:content])
 
   redirect '/'
 end
 
 get '/memos/:id' do
-  memos = load_memos
-  @memo = find_memo(memos, params[:id])
+  @memo = find_memo(load_memos, params[:id])
 
   if @memo
     erb :memo
@@ -104,8 +119,7 @@ get '/memos/:id' do
 end
 
 get '/memos/:id/edit' do
-  memos = load_memos
-  @memo = find_memo(memos, params[:id])
+  @memo = find_memo(load_memos, params[:id])
 
   if @memo
     erb :edit
@@ -116,28 +130,14 @@ end
 
 patch '/memos/:id' do
   id = params[:id]
-  new_title = params[:title]
-  new_content = params[:content]
 
-  memos = load_memos
-
-  memo = find_memo(memos, id)
-  if memo
-    memo['title'] = new_title
-    memo['content'] = new_content
-  end
-
-  save_memos(memos)
+  update_memo(id, params[:title], params[:content])
 
   redirect "/memos/#{id}"
 end
 
 delete '/memos/:id' do
-  memos = load_memos
-
-  memos.reject! { |m| m['id'] == params[:id] }
-
-  save_memos(memos)
+  delete_memo(params[:id])
 
   redirect '/'
 end
