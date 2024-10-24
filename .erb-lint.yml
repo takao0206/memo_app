@@ -1,0 +1,6 @@
+---
+EnableDefaultLinters: true
+glob: "**/*.erb"
+linters:
+  RequireInputAutocomplete:
+    enabled: false

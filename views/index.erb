@@ -1,0 +1,9 @@
+<a href="/memos/new" class="btn btn-primary">追加</a>
+
+<div class="mt-5">
+  <ul class="list-group">
+    <% @memos.each do |memo| %>
+      <a href="/memos/<%= h(memo['id']) %>" class="list-group-item bg-dark text-light list-group-item-action"><%= h(memo['title']) %></a>
+    <% end %>
+  </ul>
+</div>
