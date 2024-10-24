@@ -3,8 +3,42 @@
 require 'sinatra'
 require 'json'
 require 'securerandom'
+require 'pg'
+require 'dotenv/load'
 
 MEMOS_PATH = File.join(settings.public_folder, 'memos.json')
+TABLE_NAME = 'memos'
+
+def connect_db
+  PG.connect(
+    dbname: ENV['DATABASE_NAME'],
+    user: ENV['DATABASE_USER'],
+    password: ENV['DATABASE_PASSWORD']
+  )
+end
+
+def create_table_if_not_exists
+  connection = connect_db
+  table_exists = connection.exec(
+    "SELECT EXISTS (
+      SELECT FROM information_schema.tables WHERE table_name = '#{TABLE_NAME}'
+    );"
+  ).first['exists'] == 't'
+
+  return if table_exists
+
+  connection.exec(
+    "CREATE TABLE #{TABLE_NAME} (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(100) NOT NULL,
+      content TEXT NOT NULL
+    );"
+  )
+end
+
+before do
+  create_table_if_not_exists
+end
 
 helpers do
   def h(text)
@@ -27,11 +61,17 @@ def find_memo(memos, id)
 end
 
 get '/' do
-  save_memos([]) unless File.exist?(MEMOS_PATH)
-
-  @memos = load_memos
-  erb :index
+  create_table_if_not_exists
+  "Check your database! The table '#{TABLE_NAME}' has been created if it did not exist."
 end
+
+# TODO: データベース接続の機能が完成したので、次は保存先を JSON -> DB に変更する。
+# get '/' do
+#   save_memos([]) unless File.exist?(MEMOS_PATH)
+
+#   @memos = load_memos
+#   erb :index
+# end
 
 get '/memos/new' do
   erb :new

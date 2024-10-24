@@ -2,6 +2,8 @@
 
 source 'https://rubygems.org'
 
+gem 'dotenv', '~> 3.1', '>= 3.1.4'
+gem 'pg', '~> 1.5.8'
 gem 'rackup', '~> 2.1'
 gem 'rexml', '~> 3.1', '>= 3.1.9'
 gem 'sinatra', '~> 4.0'
