@@ -21,11 +21,13 @@ helpers do
 end
 
 def connect_db
-  PG.connect(
+  connection = PG.connect(
     dbname: ENV['DATABASE_NAME'],
     user: ENV['DATABASE_USER'],
     password: ENV['DATABASE_PASSWORD']
   )
+  connection.exec("SET client_encoding TO 'UTF8'")
+  connection
 end
 
 def with_connection
@@ -37,33 +39,20 @@ end
 
 def create_table_if_not_exists
   with_connection do |connection|
-    table_exists = connection.exec(
-      "SELECT EXISTS (
-        SELECT FROM information_schema.tables WHERE table_name = '#{TABLE_NAME}'
+    connection.exec(
+      "CREATE TABLE IF NOT EXISTS #{TABLE_NAME} (
+        id SERIAL PRIMARY KEY,
+        #{COLUMN_TITLE} VARCHAR(100) NOT NULL,
+        #{COLUMN_CONTENT} TEXT NOT NULL
       );"
-    ).first['exists'] == 't'
-
-    unless table_exists
-      connection.exec(
-        "CREATE TABLE #{TABLE_NAME} (
-          id SERIAL PRIMARY KEY,
-          #{COLUMN_TITLE} VARCHAR(100) NOT NULL,
-          #{COLUMN_CONTENT} TEXT NOT NULL
-        );"
-      )
-    end
+    )
   end
 end
 
 def load_memos
   with_connection do |connection|
-    @memos = connection.exec("SELECT * FROM #{TABLE_NAME} ORDER BY id ASC;").map do |memo|
-      memo['title'].force_encoding('UTF-8')
-      memo['content'].force_encoding('UTF-8')
-      memo
-    end
+    @memos = connection.exec("SELECT * FROM #{TABLE_NAME} ORDER BY id ASC;")
   end
-  @memos
 end
 
 def save_memo(title, content)
@@ -88,11 +77,17 @@ def delete_memo(id)
   end
 end
 
-def find_memo(memos, id)
-  memos.find { |memo| memo['id'] == id }
+def find_memo(id)
+  with_connection do |connection|
+    connection.exec_params("SELECT * FROM #{TABLE_NAME} WHERE id = $1 LIMIT 1;", [id]).first
+  end
 end
 
 get '/' do
+  redirect '/memos'
+end
+
+get '/memos' do
   load_memos
 
   erb :index
@@ -105,11 +100,11 @@ end
 post '/memos' do
   save_memo(params[:title], params[:content])
 
-  redirect '/'
+  redirect '/memos'
 end
 
 get '/memos/:id' do
-  @memo = find_memo(load_memos, params[:id])
+  @memo = find_memo(params[:id])
 
   if @memo
     erb :memo
@@ -119,7 +114,7 @@ get '/memos/:id' do
 end
 
 get '/memos/:id/edit' do
-  @memo = find_memo(load_memos, params[:id])
+  @memo = find_memo(params[:id])
 
   if @memo
     erb :edit
@@ -139,7 +134,7 @@ end
 delete '/memos/:id' do
   delete_memo(params[:id])
 
-  redirect '/'
+  redirect '/memos'
 end
 
 not_found do

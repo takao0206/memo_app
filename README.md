@@ -50,7 +50,7 @@ ALTER USER memo_app_user CREATEDB;
 ```
 8. **データベース作成**
 ```sql
-CREATE DATABASE memo_app WITH OWNER memo_app_user;
+CREATE DATABASE memo_app WITH OWNER memo_app_user ENCODING 'UTF8' TEMPLATE template0;
 ```
 9. **アプリケーションの起動**
 ```bash
