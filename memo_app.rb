@@ -3,8 +3,16 @@
 require 'sinatra'
 require 'json'
 require 'securerandom'
+require 'pg'
+require 'dotenv/load'
 
-MEMOS_PATH = File.join(settings.public_folder, 'memos.json')
+TABLE_NAME = 'memos'
+COLUMN_TITLE = 'title'
+COLUMN_CONTENT = 'content'
+
+before do
+  create_table_if_not_exists
+end
 
 helpers do
   def h(text)
@@ -12,24 +20,76 @@ helpers do
   end
 end
 
-def load_memos
-  JSON.parse(File.read(MEMOS_PATH))
+def connect_db
+  connection = PG.connect(
+    dbname: ENV['DATABASE_NAME'],
+    user: ENV['DATABASE_USER'],
+    password: ENV['DATABASE_PASSWORD']
+  )
+  connection.exec("SET client_encoding TO 'UTF8'")
+  connection
 end
 
-def save_memos(memos)
-  File.open(MEMOS_PATH, 'w') do |file|
-    file.write(JSON.generate(memos))
+def with_connection
+  connection = connect_db
+  yield(connection)
+ensure
+  connection&.close
+end
+
+def create_table_if_not_exists
+  with_connection do |connection|
+    connection.exec(
+      "CREATE TABLE IF NOT EXISTS #{TABLE_NAME} (
+        id SERIAL PRIMARY KEY,
+        #{COLUMN_TITLE} VARCHAR(100) NOT NULL,
+        #{COLUMN_CONTENT} TEXT NOT NULL
+      );"
+    )
   end
 end
 
-def find_memo(memos, id)
-  memos.find { |memo| memo['id'] == id }
+def load_memos
+  with_connection do |connection|
+    @memos = connection.exec("SELECT * FROM #{TABLE_NAME} ORDER BY id ASC;")
+  end
+end
+
+def save_memo(title, content)
+  with_connection do |connection|
+    connection.exec_params(
+      "INSERT INTO #{TABLE_NAME} (#{COLUMN_TITLE}, #{COLUMN_CONTENT}) VALUES ($1, $2)", [title, content]
+    )
+  end
+end
+
+def update_memo(id, title, content)
+  with_connection do |connection|
+    connection.exec_params(
+      "UPDATE #{TABLE_NAME} SET #{COLUMN_TITLE} = $1, #{COLUMN_CONTENT} = $2 WHERE id = $3", [title, content, id]
+    )
+  end
+end
+
+def delete_memo(id)
+  with_connection do |connection|
+    connection.exec_params("DELETE FROM #{TABLE_NAME} WHERE id = $1", [id])
+  end
+end
+
+def find_memo(id)
+  with_connection do |connection|
+    connection.exec_params("SELECT * FROM #{TABLE_NAME} WHERE id = $1 LIMIT 1;", [id]).first
+  end
 end
 
 get '/' do
-  save_memos([]) unless File.exist?(MEMOS_PATH)
+  redirect '/memos'
+end
 
-  @memos = load_memos
+get '/memos' do
+  load_memos
+
   erb :index
 end
 
@@ -38,23 +98,13 @@ get '/memos/new' do
 end
 
 post '/memos' do
-  memo = {
-    id: SecureRandom.uuid,
-    title: params[:title],
-    content: params[:content]
-  }
+  save_memo(params[:title], params[:content])
 
-  memos = load_memos
-  memos << memo
-
-  save_memos(memos)
-
-  redirect '/'
+  redirect '/memos'
 end
 
 get '/memos/:id' do
-  memos = load_memos
-  @memo = find_memo(memos, params[:id])
+  @memo = find_memo(params[:id])
 
   if @memo
     erb :memo
@@ -64,8 +114,7 @@ get '/memos/:id' do
 end
 
 get '/memos/:id/edit' do
-  memos = load_memos
-  @memo = find_memo(memos, params[:id])
+  @memo = find_memo(params[:id])
 
   if @memo
     erb :edit
@@ -76,30 +125,16 @@ end
 
 patch '/memos/:id' do
   id = params[:id]
-  new_title = params[:title]
-  new_content = params[:content]
 
-  memos = load_memos
-
-  memo = find_memo(memos, id)
-  if memo
-    memo['title'] = new_title
-    memo['content'] = new_content
-  end
-
-  save_memos(memos)
+  update_memo(id, params[:title], params[:content])
 
   redirect "/memos/#{id}"
 end
 
 delete '/memos/:id' do
-  memos = load_memos
+  delete_memo(params[:id])
 
-  memos.reject! { |m| m['id'] == params[:id] }
-
-  save_memos(memos)
-
-  redirect '/'
+  redirect '/memos'
 end
 
 not_found do
